@@ -1,35 +1,36 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config(); // Load .env variables
+require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.log("MongoDB Error: ", err));
+// MongoDB Model
+const Registration = require("./models/Registration"); // adjust path if needed
 
-const RegSchema = new mongoose.Schema({
-  leaderName: String,
-  phone: String,
-  ffid: String,
-  members: String,
-});
-const Registration = mongoose.model("Registration", RegSchema);
-
+// Registration Route
 app.post("/api/register", async (req, res) => {
   const { leaderName, phone, ffid, members } = req.body;
+
   try {
-    const newReg = new Registration({ leaderName, phone, ffid, members });
-    await newReg.save();
-    res.status(200).json({ message: "Registration saved" });
-  } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    const existingUser = await Registration.findOne({ phone });
+
+    if (existingUser) {
+      return res.status(409).json({ message: "User already registered" });
+    }
+
+    const newEntry = new Registration({ leaderName, phone, ffid, members });
+    await newEntry.save();
+    res.status(201).json({ message: "Registration successful" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
